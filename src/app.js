@@ -23,6 +23,8 @@ const ticketRoutes  = require('./routes/ticketRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const userRoutes = require('./routes/userRoutes');
 const bannerRoutes = require('./routes/bannerRoutes');
+const ratingRoutes = require('./routes/ratingRoutes');
+const qnaRoutes    = require('./routes/qnaRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const ApiError = require('./utils/ApiError');
 
@@ -63,7 +65,9 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/users', userRoutes);
-app.use("/api/banners", bannerRoutes);
+app.use('/api/banners', bannerRoutes);
+app.use('/api/ratings', ratingRoutes);
+app.use('/api/qna', qnaRoutes);
 
 app.all('*', (req, res, next) => {
   next(new ApiError(404, `Route ${req.originalUrl} not found`));
