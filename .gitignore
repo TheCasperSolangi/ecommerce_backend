@@ -1,0 +1,91 @@
+# ======================
+# Environment & Secrets
+# ======================
+.env
+.env.*
+!.env.example
+
+# ======================
+# Node.js
+# ======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ======================
+# Uploads & Storage
+# ======================
+uploads/
+storage/
+public/uploads/
+*.pdf
+
+# ======================
+# Logs
+# ======================
+logs/
+*.log
+combined.log
+error.log
+
+# ======================
+# Build & Cache
+# ======================
+dist/
+build/
+.cache/
+.parcel-cache/
+.turbo/
+
+# ======================
+# OS Files
+# ======================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ======================
+# IDE & Editor
+# ======================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains (WebStorm, IntelliJ)
+.idea/
+*.iml
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+
+# ======================
+# Testing
+# ======================
+coverage/
+.nyc_output/
+junit.xml
+
+# ======================
+# Misc
+# ======================
+*.tgz
+*.zip
+.npmrc
