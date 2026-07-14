@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const { Client, Environment, OrdersController, PaymentsController } = require('@paypal/paypal-server-sdk');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
-const Product = require('../models/Product');
+const Product = require('../models/Products');
 const Coupon = require('../models/Coupon');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
@@ -30,7 +30,7 @@ let _paypalPaymentsCtrl = null;
 const getPayPal = () => {
   if (_paypalOrdersCtrl) return { orders: _paypalOrdersCtrl, payments: _paypalPaymentsCtrl };
 
-  const clientId     = process.env.PAYPAL_CLIENT_ID;
+  const clientId = process.env.PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set');
 
@@ -43,7 +43,7 @@ const getPayPal = () => {
     environment: env,
   });
 
-  _paypalOrdersCtrl   = new OrdersController(client);
+  _paypalOrdersCtrl = new OrdersController(client);
   _paypalPaymentsCtrl = new PaymentsController(client);
   return { orders: _paypalOrdersCtrl, payments: _paypalPaymentsCtrl };
 };
@@ -86,13 +86,13 @@ const clearCart = async (cart) => {
 
 /** Advance a PENDING_PAYMENT order to CONFIRMED after successful payment capture. */
 const confirmOrderPayment = async (order, provider, intentId) => {
-  order.status             = 'CONFIRMED';
-  order.payment_provider   = provider;
-  order.payment_intent_id  = intentId;
+  order.status = 'CONFIRMED';
+  order.payment_provider = provider;
+  order.payment_intent_id = intentId;
   await order.save({ validateBeforeSave: false });
 
   // Send invoice email after online payment confirmation.
-  sendInvoiceEmail(order).catch(() => {});
+  sendInvoiceEmail(order).catch(() => { });
 
   // Notify customer
   const user = await User.findById(order.user_id).select('email push_tokens');
@@ -114,7 +114,7 @@ const confirmOrderPayment = async (order, provider, intentId) => {
   if (tokens.length) {
     sendPushToMany(tokens, 'Payment Confirmed 💳', `Payment for order ${order.order_code} was successful.`, {
       order_id: String(order._id), event: 'PAYMENT_CONFIRMED',
-    }).catch(() => {});
+    }).catch(() => { });
   }
 };
 
@@ -135,7 +135,7 @@ exports.stripeCreateIntent = catchAsync(async (req, res) => {
   const { address, phone } = req.body;
 
   if (!address) throw new ApiError(400, 'Delivery address is required');
-  if (!phone)   throw new ApiError(400, 'Contact phone is required');
+  if (!phone) throw new ApiError(400, 'Contact phone is required');
 
   const cart = await Cart.findOne({ user_id: String(req.user._id) });
   if (!cart || cart.items.length === 0) throw new ApiError(400, 'Your cart is empty');
@@ -148,11 +148,11 @@ exports.stripeCreateIntent = catchAsync(async (req, res) => {
   // Create the PaymentIntent server-side.
   const stripe = getStripe();
   const intent = await stripe.paymentIntents.create({
-    amount:   amountInCents,
+    amount: amountInCents,
     currency,
     // Metadata ties the intent to our internal order code for auditability.
     metadata: {
-      user_id:   String(req.user._id),
+      user_id: String(req.user._id),
       cart_code: cart.cart_code,
     },
     // automatic_payment_methods lets the frontend use any Stripe-supported method.
@@ -168,29 +168,29 @@ exports.stripeCreateIntent = catchAsync(async (req, res) => {
 
   // Create the Order in PENDING_PAYMENT state — stock is NOT yet decremented.
   const order = new Order({
-    order_code:   generateOrderCode(),
-    cart_code:    cart.cart_code,
-    user_id:      req.user._id,
+    order_code: generateOrderCode(),
+    cart_code: cart.cart_code,
+    user_id: req.user._id,
     warehouse_id,
     user_details: {
       first_name: req.user.first_name,
-      last_name:  req.user.last_name,
-      email:      req.user.email,
+      last_name: req.user.last_name,
+      email: req.user.email,
       phone,
       address,
     },
     cart_details: {
-      items:           cart.items,
-      coupon_code:     cart.coupon_code || null,
+      items: cart.items,
+      coupon_code: cart.coupon_code || null,
       coupon_discount: cart.coupon_discount || 0,
       shipping_charges: cart.shipping_charges || 0,
-      shipping_type:   cart.shipping_type || null,
-      subtotal:        cart.subtotal,
+      shipping_type: cart.shipping_type || null,
+      subtotal: cart.subtotal,
     },
-    status:             'PENDING_PAYMENT',
-    payment_method:     'CARD',
-    payment_provider:   'stripe',
-    payment_intent_id:  intent.id,
+    status: 'PENDING_PAYMENT',
+    payment_method: 'CARD',
+    payment_provider: 'stripe',
+    payment_intent_id: intent.id,
   });
 
   await order.save({ validateBeforeSave: false });
@@ -199,9 +199,9 @@ exports.stripeCreateIntent = catchAsync(async (req, res) => {
     success: true,
     data: {
       client_secret: intent.client_secret,   // sent to frontend to call stripe.confirmPayment()
-      order_id:      order._id,
-      order_code:    order.order_code,
-      amount:        cart.subtotal,
+      order_id: order._id,
+      order_code: order.order_code,
+      amount: cart.subtotal,
       currency,
     },
   });
@@ -295,13 +295,13 @@ exports.paypalCreateOrder = catchAsync(async (req, res) => {
   const { address, phone } = req.body;
 
   if (!address) throw new ApiError(400, 'Delivery address is required');
-  if (!phone)   throw new ApiError(400, 'Contact phone is required');
+  if (!phone) throw new ApiError(400, 'Contact phone is required');
 
   const cart = await Cart.findOne({ user_id: String(req.user._id) });
   if (!cart || cart.items.length === 0) throw new ApiError(400, 'Your cart is empty');
 
   const currency = (process.env.DEFAULT_CURRENCY || 'USD').toUpperCase();
-  const amount   = (cart.subtotal || 0).toFixed(2);
+  const amount = (cart.subtotal || 0).toFixed(2);
 
   const { orders: ordersCtrl } = getPayPal();
 
@@ -333,28 +333,28 @@ exports.paypalCreateOrder = catchAsync(async (req, res) => {
 
   // Create internal Order in PENDING_PAYMENT state.
   const order = new Order({
-    order_code:   generateOrderCode(),
-    cart_code:    cart.cart_code,
-    user_id:      req.user._id,
+    order_code: generateOrderCode(),
+    cart_code: cart.cart_code,
+    user_id: req.user._id,
     warehouse_id,
     user_details: {
       first_name: req.user.first_name,
-      last_name:  req.user.last_name,
-      email:      req.user.email,
+      last_name: req.user.last_name,
+      email: req.user.email,
       phone,
       address,
     },
     cart_details: {
-      items:            cart.items,
-      coupon_code:      cart.coupon_code || null,
-      coupon_discount:  cart.coupon_discount || 0,
+      items: cart.items,
+      coupon_code: cart.coupon_code || null,
+      coupon_discount: cart.coupon_discount || 0,
       shipping_charges: cart.shipping_charges || 0,
-      shipping_type:    cart.shipping_type || null,
-      subtotal:         cart.subtotal,
+      shipping_type: cart.shipping_type || null,
+      subtotal: cart.subtotal,
     },
-    status:            'PENDING_PAYMENT',
-    payment_method:    'CARD',
-    payment_provider:  'paypal',
+    status: 'PENDING_PAYMENT',
+    payment_method: 'CARD',
+    payment_provider: 'paypal',
     payment_intent_id: paypalOrder.id,   // PayPal Order ID stored here
   });
 
@@ -364,8 +364,8 @@ exports.paypalCreateOrder = catchAsync(async (req, res) => {
     success: true,
     data: {
       paypal_order_id: paypalOrder.id,  // frontend passes this to PayPal JS SDK
-      order_id:        order._id,
-      order_code:      order.order_code,
+      order_id: order._id,
+      order_code: order.order_code,
       amount,
       currency,
     },

@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const User = require('../models/User');
-const Product = require('../models/Product');
+const Product = require('../models/Products');
 const Coupon = require('../models/Coupon');
 const PlatformSettings = require('../models/platformSettings');
 const ApiError = require('../utils/ApiError');
@@ -22,76 +22,76 @@ const { createOrderTransaction } = require('./transactionController');
  * Returns { subject, emailHtml, pushTitle, pushBody }
  */
 const buildNotificationContent = (order, event) => {
-  const name  = order.user_details?.first_name || 'Customer';
-  const code  = order.order_code;
+  const name = order.user_details?.first_name || 'Customer';
+  const code = order.order_code;
   const total = order.cart_details?.subtotal ?? '';
 
   const map = {
     ORDER_PLACED: {
-      subject:   `Order Confirmed — ${code}`,
+      subject: `Order Confirmed — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your order <strong>${code}</strong> has been placed successfully. We'll notify you as it progresses.</p><p>Total: <strong>${total}</strong></p>`,
       pushTitle: 'Order Placed ✅',
-      pushBody:  `Your order ${code} has been placed. Total: ${total}`,
+      pushBody: `Your order ${code} has been placed. Total: ${total}`,
     },
     CONFIRMED: {
-      subject:   `Order Confirmed — ${code}`,
+      subject: `Order Confirmed — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Great news! Your order <strong>${code}</strong> has been confirmed and is being prepared.</p>`,
       pushTitle: 'Order Confirmed ✅',
-      pushBody:  `Order ${code} confirmed — we're getting it ready.`,
+      pushBody: `Order ${code} confirmed — we're getting it ready.`,
     },
     PENDING_PAYMENT: {
-      subject:   `Payment Pending — ${code}`,
+      subject: `Payment Pending — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your order <strong>${code}</strong> is awaiting payment confirmation. Please complete your payment to proceed.</p>`,
       pushTitle: 'Payment Pending ⏳',
-      pushBody:  `Order ${code} is waiting for payment confirmation.`,
+      pushBody: `Order ${code} is waiting for payment confirmation.`,
     },
     PROCESSING: {
-      subject:   `Order Processing — ${code}`,
+      subject: `Order Processing — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your order <strong>${code}</strong> is now being processed and packed.</p>`,
       pushTitle: 'Order Processing 📦',
-      pushBody:  `Order ${code} is being packed and prepared for dispatch.`,
+      pushBody: `Order ${code} is being packed and prepared for dispatch.`,
     },
     OUT_FOR_DELIVERY: {
-      subject:   `Out for Delivery — ${code}`,
+      subject: `Out for Delivery — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your order <strong>${code}</strong> is on its way! Expect delivery soon.</p>`,
       pushTitle: 'Out for Delivery 🚚',
-      pushBody:  `Order ${code} is on its way to you!`,
+      pushBody: `Order ${code} is on its way to you!`,
     },
     DELIVERED: {
-      subject:   `Order Delivered — ${code}`,
+      subject: `Order Delivered — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your order <strong>${code}</strong> has been delivered. Enjoy your purchase!</p><p>If you have any issues, please contact our support team.</p>`,
       pushTitle: 'Order Delivered 🎉',
-      pushBody:  `Order ${code} has been delivered. Enjoy!`,
+      pushBody: `Order ${code} has been delivered. Enjoy!`,
     },
     CANCELLED: {
-      subject:   `Order Cancelled — ${code}`,
+      subject: `Order Cancelled — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your order <strong>${code}</strong> has been cancelled.</p>${order.cancellation_reason ? `<p>Reason: ${order.cancellation_reason}</p>` : ''}`,
       pushTitle: 'Order Cancelled ❌',
-      pushBody:  `Order ${code} has been cancelled.`,
+      pushBody: `Order ${code} has been cancelled.`,
     },
     REFUNDED: {
-      subject:   `Refund Processed — ${code}`,
+      subject: `Refund Processed — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Your refund of <strong>${order.refund_amount ?? total}</strong> for order <strong>${code}</strong> has been credited to your wallet.</p>`,
       pushTitle: 'Refund Credited 💰',
-      pushBody:  `Refund for order ${code} has been added to your wallet.`,
+      pushBody: `Refund for order ${code} has been added to your wallet.`,
     },
     FAILED_DELIVERY: {
-      subject:   `Delivery Failed — ${code}`,
+      subject: `Delivery Failed — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>Unfortunately your order <strong>${code}</strong> could not be delivered.</p>${order.delivery_failure ? `<p>Reason: ${order.delivery_failure}</p>` : ''}<p>Our team will contact you to arrange a re-attempt.</p>`,
       pushTitle: 'Delivery Failed 😟',
-      pushBody:  `We couldn't deliver order ${code}. We'll arrange a re-attempt.`,
+      pushBody: `We couldn't deliver order ${code}. We'll arrange a re-attempt.`,
     },
     RE_ATTEMPT_DELIVERY: {
-      subject:   `Re-attempt Scheduled — ${code}`,
+      subject: `Re-attempt Scheduled — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>A delivery re-attempt has been scheduled for your order <strong>${code}</strong>. Please ensure someone is available to receive it.</p>`,
       pushTitle: 'Delivery Re-attempt Scheduled 🔄',
-      pushBody:  `A re-delivery has been scheduled for order ${code}.`,
+      pushBody: `A re-delivery has been scheduled for order ${code}.`,
     },
     RIDER_ASSIGNED: {
-      subject:   `Rider Assigned — ${code}`,
+      subject: `Rider Assigned — ${code}`,
       emailHtml: `<p>Hi ${name},</p><p>A rider has been assigned to your order <strong>${code}</strong> and will be picking it up shortly.</p>`,
       pushTitle: 'Rider Assigned 🛵',
-      pushBody:  `A rider has been assigned to deliver order ${code}.`,
+      pushBody: `A rider has been assigned to deliver order ${code}.`,
     },
   };
 
@@ -131,7 +131,7 @@ const notifyUser = async (order, event) => {
     try {
       await sendPushToMany(tokens, content.pushTitle, content.pushBody, {
         order_code: order.order_code,
-        order_id:   String(order._id),
+        order_id: String(order._id),
         event,
       });
     } catch (err) {
@@ -162,7 +162,7 @@ const sendInvoiceEmail = async (order) => {
     const pdfBuffer = await generateInvoicePdf(order.toObject(), settings?.toObject());
 
     await sendEmail({
-      to:      user.email,
+      to: user.email,
       subject: `Your Invoice — ${order.order_code}`,
       html: `<p>Hi ${user.first_name},</p>
              <p>Thank you for your order! Please find your invoice attached.</p>
@@ -171,8 +171,8 @@ const sendInvoiceEmail = async (order) => {
              <p>Thank you for choosing us!</p>`,
       attachments: [
         {
-          filename:    `invoice-${order.order_code}.pdf`,
-          content:     pdfBuffer,
+          filename: `invoice-${order.order_code}.pdf`,
+          content: pdfBuffer,
           contentType: 'application/pdf',
         },
       ],
@@ -211,12 +211,12 @@ const TERMINAL_STATUSES = ['REFUNDED', 'CANCELLED'];
  * Rider transitions are handled separately.
  */
 const ADMIN_STATUS_TRANSITIONS = {
-  PENDING:             ['CONFIRMED', 'PENDING_PAYMENT', 'CANCELLED'],
-  CONFIRMED:           ['PROCESSING', 'CANCELLED'],
-  PENDING_PAYMENT:     ['CONFIRMED', 'CANCELLED'],
-  PROCESSING:          ['OUT_FOR_DELIVERY', 'CANCELLED'],
-  OUT_FOR_DELIVERY:    ['DELIVERED', 'FAILED_DELIVERY'],
-  FAILED_DELIVERY:     ['RE_ATTEMPT_DELIVERY', 'CANCELLED'],
+  PENDING: ['CONFIRMED', 'PENDING_PAYMENT', 'CANCELLED'],
+  CONFIRMED: ['PROCESSING', 'CANCELLED'],
+  PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
+  PROCESSING: ['OUT_FOR_DELIVERY', 'CANCELLED'],
+  OUT_FOR_DELIVERY: ['DELIVERED', 'FAILED_DELIVERY'],
+  FAILED_DELIVERY: ['RE_ATTEMPT_DELIVERY', 'CANCELLED'],
   RE_ATTEMPT_DELIVERY: ['OUT_FOR_DELIVERY', 'CANCELLED'],
   // DELIVERED is a valid source only for refund — handled in adminRefund, not here.
 };
@@ -412,8 +412,8 @@ exports.placeOrder = catchAsync(async (req, res) => {
   await cart.save();
 
   // --- Notify customer ---
-  notifyUser(order, 'ORDER_PLACED').catch(() => {});
-  sendInvoiceEmail(order).catch(() => {});
+  notifyUser(order, 'ORDER_PLACED').catch(() => { });
+  sendInvoiceEmail(order).catch(() => { });
 
   // --- Record income transaction ---
   createOrderTransaction(order).catch((err) =>
@@ -495,7 +495,7 @@ exports.cancelOrder = catchAsync(async (req, res) => {
   await restoreStock(order.cart_details?.items || []);
 
   // Notify customer of cancellation or refund.
-  notifyUser(order, order.status).catch(() => {});
+  notifyUser(order, order.status).catch(() => { });
 
   res.status(200).json({
     success: true,
@@ -560,7 +560,7 @@ exports.riderUpdateOrder = catchAsync(async (req, res) => {
   await order.save({ validateBeforeSave: false });
 
   // Notify customer of delivery outcome.
-  notifyUser(order, order.status).catch(() => {});
+  notifyUser(order, order.status).catch(() => { });
 
   res.status(200).json({
     success: true,
@@ -667,7 +667,7 @@ exports.adminUpdateOrderStatus = catchAsync(async (req, res) => {
   await order.save({ validateBeforeSave: false });
 
   // Notify customer. Use final order.status (may have become REFUNDED after cancel).
-  notifyUser(order, order.status).catch(() => {});
+  notifyUser(order, order.status).catch(() => { });
 
   res.status(200).json({
     success: true,
@@ -692,7 +692,7 @@ exports.adminAssignRider = catchAsync(async (req, res) => {
 
   // Rider must belong to the same warehouse (unless admin is super-admin).
   if (!req.isSuperAdmin && rider.warehouse_id &&
-      String(rider.warehouse_id) !== String(req.warehouseId)) {
+    String(rider.warehouse_id) !== String(req.warehouseId)) {
     throw new ApiError(403, 'You can only assign riders from your own warehouse');
   }
 
@@ -713,7 +713,7 @@ exports.adminAssignRider = catchAsync(async (req, res) => {
   await order.save({ validateBeforeSave: false });
 
   // Notify customer that a rider has been assigned.
-  notifyUser(order, 'RIDER_ASSIGNED').catch(() => {});
+  notifyUser(order, 'RIDER_ASSIGNED').catch(() => { });
 
   res.status(200).json({
     success: true,
@@ -769,7 +769,7 @@ exports.adminRefund = catchAsync(async (req, res) => {
   await order.save({ validateBeforeSave: false });
 
   // Notify customer of the refund.
-  notifyUser(order, 'REFUNDED').catch(() => {});
+  notifyUser(order, 'REFUNDED').catch(() => { });
 
   res.status(200).json({
     success: true,
@@ -806,7 +806,7 @@ exports.getOrdersList = catchAsync(async (req, res) => {
 
   // ── items_per_page hard cap at 15 ────────────────────────────────────────
   const limit = Math.min(parseInt(items_per_page) || 15, 15);
-  const skip  = (Math.max(parseInt(page), 1) - 1) * limit;
+  const skip = (Math.max(parseInt(page), 1) - 1) * limit;
 
   // ── warehouse_id query-param override (super-admin only) ─────────────────
   // warehouseScope has already populated req.warehouseFilter / req.isSuperAdmin.
@@ -831,7 +831,7 @@ exports.getOrdersList = catchAsync(async (req, res) => {
     }
   }
 
-  if (status)         filter.status         = status;
+  if (status) filter.status = status;
   if (payment_method) filter.payment_method = payment_method;
 
   const [orders, total] = await Promise.all([
@@ -855,16 +855,16 @@ exports.getOrdersList = catchAsync(async (req, res) => {
       orders,
       pagination: {
         total,
-        page:           parseInt(page),
+        page: parseInt(page),
         items_per_page: limit,
         pages,
       },
       filters_applied: {
-        from:           from  || null,
-        to:             to    || null,
-        status:         status         || null,
+        from: from || null,
+        to: to || null,
+        status: status || null,
         payment_method: payment_method || null,
-        warehouse_id:   filter.warehouse_id || null,
+        warehouse_id: filter.warehouse_id || null,
       },
     },
   });
@@ -895,7 +895,7 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   } = req.query;
 
   const limit = Math.min(parseInt(items_per_page) || 15, 15);
-  const skip  = (Math.max(parseInt(page), 1) - 1) * limit;
+  const skip = (Math.max(parseInt(page), 1) - 1) * limit;
 
   let filter = { ...req.warehouseFilter };
 
@@ -916,7 +916,7 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
     }
   }
 
-  if (status)         filter.status         = status;
+  if (status) filter.status = status;
   if (payment_method) filter.payment_method = payment_method;
 
   const [orders, total] = await Promise.all([
@@ -928,8 +928,8 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   ]);
 
   // ── Aggregate summary figures ─────────────────────────────────────────────
-  const totalRevenue   = orders.reduce((s, o) => s + (o.cart_details?.subtotal || 0), 0);
-  const statusCounts   = {};
+  const totalRevenue = orders.reduce((s, o) => s + (o.cart_details?.subtotal || 0), 0);
+  const statusCounts = {};
   orders.forEach((o) => {
     statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
   });
@@ -939,7 +939,7 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   const settings = await PlatformSettings.findOne();
   const companyName = settings?.name || 'Open Commerce';
 
-  const doc    = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true });
+  const doc = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true });
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
 
@@ -949,17 +949,17 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   });
 
   // ── Palette ───────────────────────────────────────────────────────────────
-  const DARK        = '#222222';
-  const GREY        = '#888888';
-  const LIGHT_GREY  = '#f0f0f0';
-  const WAVE_LIGHT  = '#c8c8c8';
-  const WAVE_DARK   = '#3a3a3a';
+  const DARK = '#222222';
+  const GREY = '#888888';
+  const LIGHT_GREY = '#f0f0f0';
+  const WAVE_LIGHT = '#c8c8c8';
+  const WAVE_DARK = '#3a3a3a';
   const W = doc.page.width;
   const L = 40;
   const R = W - 40;
 
   const currency = (n) => `$${(parseFloat(n) || 0).toFixed(2)}`;
-  const fmtDate  = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '—';
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '—';
 
   // ── HEADER ────────────────────────────────────────────────────────────────
   let y = 40;
@@ -967,17 +967,17 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   // Logo placeholder
   doc.rect(L, y, 70, 30).fillAndStroke(LIGHT_GREY, LIGHT_GREY);
   doc.fillColor(GREY).fontSize(8).font('Helvetica')
-     .text('YOUR LOGO', L + 6, y + 11);
+    .text('YOUR LOGO', L + 6, y + 11);
 
   // Title — top right
   doc.fillColor(DARK).fontSize(20).font('Helvetica-Bold')
-     .text('ORDERS REPORT', 0, y + 6, { align: 'right', width: W - 40 });
+    .text('ORDERS REPORT', 0, y + 6, { align: 'right', width: W - 40 });
 
   y += 46;
 
   // Company + date range subtitle
   doc.fontSize(9).font('Helvetica').fillColor(GREY)
-     .text(`${companyName}  ·  Generated: ${fmtDate(new Date())}`, L, y);
+    .text(`${companyName}  ·  Generated: ${fmtDate(new Date())}`, L, y);
   if (from || to) {
     doc.text(`Period: ${from ? fmtDate(from) : '—'}  to  ${to ? fmtDate(to) : '—'}`, L, y + 12);
     y += 12;
@@ -988,18 +988,18 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   // ── SUMMARY BOXES ─────────────────────────────────────────────────────────
   const BOX_W = (R - L - 20) / 3;
   const boxes = [
-    { label: 'Total Orders',   value: String(total) },
-    { label: 'Page Revenue',   value: currency(totalRevenue) },
-    { label: 'This Page',      value: `${orders.length} / ${limit}` },
+    { label: 'Total Orders', value: String(total) },
+    { label: 'Page Revenue', value: currency(totalRevenue) },
+    { label: 'This Page', value: `${orders.length} / ${limit}` },
   ];
 
   boxes.forEach((box, i) => {
     const bx = L + i * (BOX_W + 10);
     doc.rect(bx, y, BOX_W, 44).fill(LIGHT_GREY);
     doc.fillColor(GREY).fontSize(8).font('Helvetica')
-       .text(box.label, bx + 10, y + 8);
+      .text(box.label, bx + 10, y + 8);
     doc.fillColor(DARK).fontSize(16).font('Helvetica-Bold')
-       .text(box.value, bx + 10, y + 20);
+      .text(box.value, bx + 10, y + 20);
   });
 
   y += 58;
@@ -1007,13 +1007,13 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   // ── STATUS BREAKDOWN ──────────────────────────────────────────────────────
   if (Object.keys(statusCounts).length > 0) {
     doc.fontSize(9).font('Helvetica-Bold').fillColor(DARK)
-       .text('Status breakdown:', L, y);
+      .text('Status breakdown:', L, y);
     y += 13;
     const statusLine = Object.entries(statusCounts)
       .map(([s, c]) => `${s}: ${c}`)
       .join('   ·   ');
     doc.fontSize(8).font('Helvetica').fillColor(GREY)
-       .text(statusLine, L, y, { width: R - L });
+      .text(statusLine, L, y, { width: R - L });
     y += 20;
   }
 
@@ -1023,25 +1023,25 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
 
   // ── TABLE HEADER ──────────────────────────────────────────────────────────
   const COL = {
-    no:       L,
-    code:     L + 20,
+    no: L,
+    code: L + 20,
     customer: L + 120,
-    status:   L + 240,
-    payment:  L + 310,
-    total:    L + 400,
-    date:     L + 455,
+    status: L + 240,
+    payment: L + 310,
+    total: L + 400,
+    date: L + 455,
   };
   const ROW_H = 20;
 
   doc.rect(L, y, R - L, ROW_H).fill(DARK);
   doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold')
-     .text('#',          COL.no       + 2, y + 6)
-     .text('Order Code', COL.code     + 2, y + 6)
-     .text('Customer',   COL.customer + 2, y + 6)
-     .text('Status',     COL.status   + 2, y + 6)
-     .text('Payment',    COL.payment  + 2, y + 6)
-     .text('Total',      COL.total    + 2, y + 6)
-     .text('Date',       COL.date     + 2, y + 6);
+    .text('#', COL.no + 2, y + 6)
+    .text('Order Code', COL.code + 2, y + 6)
+    .text('Customer', COL.customer + 2, y + 6)
+    .text('Status', COL.status + 2, y + 6)
+    .text('Payment', COL.payment + 2, y + 6)
+    .text('Total', COL.total + 2, y + 6)
+    .text('Date', COL.date + 2, y + 6);
 
   y += ROW_H;
 
@@ -1063,13 +1063,13 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
     ].filter(Boolean).join(' ') || '—';
 
     doc.fillColor(DARK).fontSize(7.5).font('Helvetica')
-       .text(String(skip + idx + 1),              COL.no       + 2, y + 6)
-       .text(order.order_code,                    COL.code     + 2, y + 6, { width: 96 })
-       .text(customerName,                        COL.customer + 2, y + 6, { width: 114 })
-       .text(order.status,                        COL.status   + 2, y + 6, { width: 66 })
-       .text(order.payment_method,                COL.payment  + 2, y + 6, { width: 86 })
-       .text(currency(order.cart_details?.subtotal), COL.total + 2, y + 6, { width: 52 })
-       .text(fmtDate(order.created_at),           COL.date     + 2, y + 6, { width: 60 });
+      .text(String(skip + idx + 1), COL.no + 2, y + 6)
+      .text(order.order_code, COL.code + 2, y + 6, { width: 96 })
+      .text(customerName, COL.customer + 2, y + 6, { width: 114 })
+      .text(order.status, COL.status + 2, y + 6, { width: 66 })
+      .text(order.payment_method, COL.payment + 2, y + 6, { width: 86 })
+      .text(currency(order.cart_details?.subtotal), COL.total + 2, y + 6, { width: 52 })
+      .text(fmtDate(order.created_at), COL.date + 2, y + 6, { width: 60 });
 
     y += ROW_H;
   });
@@ -1081,32 +1081,32 @@ exports.getOrdersReport = catchAsync(async (req, res) => {
   // Pagination note
   const pages = Math.ceil(total / limit);
   doc.fontSize(8).font('Helvetica').fillColor(GREY)
-     .text(
-       `Page ${page} of ${pages}  ·  Showing ${orders.length} of ${total} orders`,
-       L, y, { align: 'center', width: R - L }
-     );
+    .text(
+      `Page ${page} of ${pages}  ·  Showing ${orders.length} of ${total} orders`,
+      L, y, { align: 'center', width: R - L }
+    );
 
   // ── WAVE FOOTER (last page) ───────────────────────────────────────────────
   const pH = doc.page.height;
   doc.moveTo(0, pH - 110)
-     .bezierCurveTo(W * 0.3, pH - 50,  W * 0.5, pH - 150, W * 0.75, pH - 85)
-     .bezierCurveTo(W * 0.85, pH - 55, W * 0.92, pH - 38, W,        pH - 65)
-     .lineTo(W, pH).lineTo(0, pH).closePath().fill(WAVE_LIGHT);
+    .bezierCurveTo(W * 0.3, pH - 50, W * 0.5, pH - 150, W * 0.75, pH - 85)
+    .bezierCurveTo(W * 0.85, pH - 55, W * 0.92, pH - 38, W, pH - 65)
+    .lineTo(W, pH).lineTo(0, pH).closePath().fill(WAVE_LIGHT);
 
   doc.moveTo(W * 0.45, pH - 8)
-     .bezierCurveTo(W * 0.6, pH - 85, W * 0.75, pH - 48, W, pH - 18)
-     .lineTo(W, pH).lineTo(W * 0.45, pH).closePath().fill(WAVE_DARK);
+    .bezierCurveTo(W * 0.6, pH - 85, W * 0.75, pH - 48, W, pH - 18)
+    .lineTo(W, pH).lineTo(W * 0.45, pH).closePath().fill(WAVE_DARK);
 
   doc.end();
   await pdfDone;
 
   const pdfBuffer = Buffer.concat(chunks);
-  const filename  = `orders-report-${Date.now()}.pdf`;
+  const filename = `orders-report-${Date.now()}.pdf`;
 
   res.set({
-    'Content-Type':        'application/pdf',
+    'Content-Type': 'application/pdf',
     'Content-Disposition': `attachment; filename="${filename}"`,
-    'Content-Length':      pdfBuffer.length,
+    'Content-Length': pdfBuffer.length,
   });
   res.send(pdfBuffer);
 });
@@ -1132,6 +1132,6 @@ exports.trackOrder = catchAsync(async (req, res) => {
 
   res.status(200).json({
     order_code: order.order_code,
-    status:     order.status,
+    status: order.status,
   });
 });

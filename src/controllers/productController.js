@@ -1,4 +1,4 @@
-const Product = require('../models/Product');
+const Product = require('../models/Products');
 const Category = require('../models/Category');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
@@ -28,12 +28,12 @@ const pickAllowed = (body, extras = []) => {
 
 const resolveSort = (sort) => {
   const map = {
-    price_asc:  { min_price: 1 },
+    price_asc: { min_price: 1 },
     price_desc: { min_price: -1 },
-    newest:     { created_at: -1 },
-    oldest:     { created_at: 1 },
-    rating:     { ratings_average: -1 },
-    featured:   { is_featured: -1, created_at: -1 },
+    newest: { created_at: -1 },
+    oldest: { created_at: 1 },
+    rating: { ratings_average: -1 },
+    featured: { is_featured: -1, created_at: -1 },
   };
   return map[sort] || { created_at: -1 };
 };
@@ -134,7 +134,7 @@ exports.getProduct = catchAsync(async (req, res) => {
 
 exports.createProduct = catchAsync(async (req, res) => {
   const data = pickAllowed(req.body);
-  data.created_by  = req.user._id;
+  data.created_by = req.user._id;
   // Stamp the creating admin's warehouse onto the product.
   data.warehouse_id = req.warehouseId;
 

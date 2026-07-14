@@ -1,5 +1,5 @@
 const Cart = require('../models/Cart');
-const Product = require('../models/Product');
+const Product = require('../models/Products');
 const Coupon = require('../models/Coupon');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
