@@ -4,6 +4,7 @@ const slugify = require('slugify');
 const platformSettings = new mongoose.Schema(
   {
     enviroment: {type:String, required: true, enum: ['PRODUCTION', 'DEVELOPMENT']},
+    platform_logo: {type:String, required: true},
     version: {type:String, required: true}, // "v1.20.09"
     name: {type:String, required: true, default: "Open Commerce"},
     tagline: {type:String, required: true},

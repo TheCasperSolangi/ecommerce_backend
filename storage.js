@@ -30,7 +30,7 @@ const app = express();
 // Configuration
 // ---------------------------------------------------------------------------
 
-const STORAGE_PORT   = Number(process.env.STORAGE_PORT    || 5001);
+const STORAGE_PORT   = 4755;
 const UPLOAD_DIR     = process.env.UPLOAD_DIR             || path.join(__dirname, 'uploads');
 const MAX_FILE_MB    = Number(process.env.MAX_FILE_SIZE_MB || 10);
 const ALLOWED_ORIGIN = process.env.STORAGE_ALLOWED_ORIGIN || process.env.CLIENT_URL || '*';

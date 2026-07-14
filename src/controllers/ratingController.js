@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const Rating  = require('../models/ratings');
 const Order   = require('../models/Order');
-const Product = require('../models/Product');
+const Product = require('../models/Products');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 
