@@ -10,7 +10,9 @@ const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 const sendEmail = require('../utils/sendEmail');
 const { sendPushToMany } = require('../utils/pushNotification');
+const { createInAppNotification } = require('../utils/inAppNotification');
 const generateInvoicePdf = require('../utils/generateInvoicePdf');
+const enrichCartItems = require('../utils/enrichCartItems');
 const { createOrderTransaction } = require('./transactionController');
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,17 @@ const notifyUser = async (order, event) => {
   const user = await User.findById(order.user_id).select('email push_tokens');
   if (!user) return;
 
+  // ── In-app notification (polled by storefront) ───────────────────────────
+  await createInAppNotification({
+    userId: order.user_id,
+    title: content.pushTitle,
+    description: content.pushBody,
+    type: 'ORDER',
+    orderCode: order.order_code,
+    orderId: order._id,
+    event,
+  });
+
   // ── Email ────────────────────────────────────────────────────────────────
   try {
     await sendEmail({
@@ -159,7 +172,11 @@ const sendInvoiceEmail = async (order) => {
 
     if (!user) return;
 
-    const pdfBuffer = await generateInvoicePdf(order.toObject(), settings?.toObject());
+    const plain = order.toObject ? order.toObject() : { ...order };
+    const enrichedItems = await enrichCartItems(plain.cart_details?.items || []);
+    plain.cart_details = { ...(plain.cart_details || {}), items: enrichedItems };
+
+    const pdfBuffer = await generateInvoicePdf(plain, settings?.toObject());
 
     await sendEmail({
       to: user.email,
@@ -386,7 +403,7 @@ exports.placeOrder = catchAsync(async (req, res) => {
       address,
     },
     cart_details: {
-      items: cart.items,
+      items: await enrichCartItems(cart.items),
       coupon_code: cart.coupon_code || null,
       coupon_discount: cart.coupon_discount || 0,
       shipping_charges: cart.shipping_charges || 0,
@@ -457,6 +474,15 @@ exports.getMyOrders = catchAsync(async (req, res) => {
 exports.getOrder = catchAsync(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, user_id: req.user._id });
   if (!order) throw new ApiError(404, 'Order not found');
+
+  // Ensure line items expose product_name for the storefront / older orders.
+  const items = order.cart_details?.items || [];
+  if (items.some((i) => !i.product_name)) {
+    const enriched = await enrichCartItems(items);
+    order.cart_details = { ...(order.cart_details?.toObject?.() || order.cart_details || {}), items: enriched };
+    await order.save({ validateBeforeSave: false });
+  }
+
   res.status(200).json({ success: true, data: { order } });
 });
 

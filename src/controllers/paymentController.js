@@ -9,7 +9,9 @@ const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 const sendEmail = require('../utils/sendEmail');
 const { sendPushToMany } = require('../utils/pushNotification');
+const { createInAppNotification } = require('../utils/inAppNotification');
 const { sendInvoiceEmail } = require('./orderController');
+const enrichCartItems = require('../utils/enrichCartItems');
 const crypto = require('crypto');
 
 // ---------------------------------------------------------------------------
@@ -98,6 +100,19 @@ const confirmOrderPayment = async (order, provider, intentId) => {
   const user = await User.findById(order.user_id).select('email push_tokens');
   if (!user) return;
 
+  const pushTitle = 'Payment Confirmed 💳';
+  const pushBody = `Payment for order ${order.order_code} was successful.`;
+
+  await createInAppNotification({
+    userId: order.user_id,
+    title: pushTitle,
+    description: pushBody,
+    type: 'PAYMENT',
+    orderCode: order.order_code,
+    orderId: order._id,
+    event: 'PAYMENT_CONFIRMED',
+  });
+
   try {
     await sendEmail({
       to: user.email,
@@ -112,7 +127,7 @@ const confirmOrderPayment = async (order, provider, intentId) => {
 
   const tokens = (user.push_tokens || []).map((t) => t.token).filter(Boolean);
   if (tokens.length) {
-    sendPushToMany(tokens, 'Payment Confirmed 💳', `Payment for order ${order.order_code} was successful.`, {
+    sendPushToMany(tokens, pushTitle, pushBody, {
       order_id: String(order._id), event: 'PAYMENT_CONFIRMED',
     }).catch(() => { });
   }
@@ -180,7 +195,7 @@ exports.stripeCreateIntent = catchAsync(async (req, res) => {
       address,
     },
     cart_details: {
-      items: cart.items,
+      items: await enrichCartItems(cart.items),
       coupon_code: cart.coupon_code || null,
       coupon_discount: cart.coupon_discount || 0,
       shipping_charges: cart.shipping_charges || 0,
@@ -345,7 +360,7 @@ exports.paypalCreateOrder = catchAsync(async (req, res) => {
       address,
     },
     cart_details: {
-      items: cart.items,
+      items: await enrichCartItems(cart.items),
       coupon_code: cart.coupon_code || null,
       coupon_discount: cart.coupon_discount || 0,
       shipping_charges: cart.shipping_charges || 0,

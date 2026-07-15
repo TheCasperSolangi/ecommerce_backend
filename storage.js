@@ -268,21 +268,31 @@ app.get('/api/uploads/admin/files', requireAdminKey, (req, res) => {
 /**
  * GET /api/uploads/:filename
  * Serve a stored file. Filename must match UUID pattern.
+ * 
+ * FIXED: Using res.sendFile with root option to properly serve files
+ * and prevent path traversal vulnerabilities.
  */
 app.get('/api/uploads/:filename', (req, res) => {
   const { filename } = req.params;
 
+  // Validate filename matches UUID pattern to prevent path traversal
   if (!isSafeFilename(filename)) {
     return res.status(400).json({ success: false, message: 'Invalid filename' });
   }
 
-  const filePath = path.join(UPLOAD_DIR, filename);
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, message: 'File not found' });
-  }
-
-  res.sendFile(filePath);
+  // Use the root option with res.sendFile - this is more secure and resolves the 
+  // "path must be absolute" error
+  res.sendFile(filename, { root: UPLOAD_DIR }, (err) => {
+    if (err) {
+      // If the file doesn't exist, send a 404
+      if (err.code === 'ENOENT') {
+        return res.status(404).json({ success: false, message: 'File not found' });
+      }
+      // Log any other errors and send a 500
+      console.error('[Storage server error]', err.message);
+      return res.status(500).json({ success: false, message: 'Error serving file' });
+    }
+  });
 });
 
 /**

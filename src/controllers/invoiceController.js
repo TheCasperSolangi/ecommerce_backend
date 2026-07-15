@@ -3,6 +3,7 @@ const PlatformSettings = require('../models/platformSettings');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 const generateInvoicePdf = require('../utils/generateInvoicePdf');
+const enrichCartItems = require('../utils/enrichCartItems');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,6 +23,23 @@ const resolveOrder = async (orderId, user) => {
   return order;
 };
 
+/** Ensure invoice line items include product_name (also patches older orders). */
+const prepareOrderForInvoice = async (order) => {
+  const plain = order.toObject();
+  const items = plain.cart_details?.items || [];
+  const enriched = await enrichCartItems(items);
+  plain.cart_details = { ...(plain.cart_details || {}), items: enriched };
+
+  // Persist names on older order docs so subsequent reads are enriched
+  const needsPatch = items.some((i) => !i.product_name);
+  if (needsPatch) {
+    order.cart_details = plain.cart_details;
+    await order.save({ validateBeforeSave: false });
+  }
+
+  return plain;
+};
+
 // ---------------------------------------------------------------------------
 // Download — streams the PDF as a file attachment
 // ---------------------------------------------------------------------------
@@ -35,8 +53,9 @@ const resolveOrder = async (orderId, user) => {
 exports.downloadInvoice = catchAsync(async (req, res) => {
   const order    = await resolveOrder(req.params.orderId, req.user);
   const settings = await PlatformSettings.findOne();
+  const invoiceOrder = await prepareOrderForInvoice(order);
 
-  const pdfBuffer = await generateInvoicePdf(order.toObject(), settings?.toObject());
+  const pdfBuffer = await generateInvoicePdf(invoiceOrder, settings?.toObject());
 
   const filename = `invoice-${order.order_code}.pdf`;
 
@@ -64,8 +83,9 @@ exports.downloadInvoice = catchAsync(async (req, res) => {
 exports.printInvoice = catchAsync(async (req, res) => {
   const order    = await resolveOrder(req.params.orderId, req.user);
   const settings = await PlatformSettings.findOne();
+  const invoiceOrder = await prepareOrderForInvoice(order);
 
-  const pdfBuffer = await generateInvoicePdf(order.toObject(), settings?.toObject());
+  const pdfBuffer = await generateInvoicePdf(invoiceOrder, settings?.toObject());
 
   res.set({
     'Content-Type':        'application/pdf',

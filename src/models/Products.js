@@ -123,7 +123,9 @@ const productSchema = new mongoose.Schema(
      min_price: { type: Number, min: 0, index: true },
     max_price: { type: Number, min: 0 },
     total_stock: { type: Number, min: 0, default: 0 },
-
+    instant_delivery_available: {type:Boolean, default:false},
+    scheduled_delivery_available: {type:Boolean, default: false},
+    express_delivery_available: {type:Boolean, default: false},
     images: { type: [imageSchema], default: [] }, // product-level gallery (variant images override per-variant)
 
     status: {

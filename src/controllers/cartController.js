@@ -38,7 +38,18 @@ const resolveVariant = async (sku, requestedQty) => {
     throw new ApiError(400, `Only ${variant.stock_quantity} unit(s) available for SKU ${sku}`);
   }
 
-  return { price: variant.price, variant };
+  const attrs =
+    variant.attributes instanceof Map
+      ? Object.fromEntries(variant.attributes)
+      : variant.attributes || {};
+  const variant_label = Object.values(attrs).filter(Boolean).join(' / ');
+
+  return {
+    price: variant.price,
+    variant,
+    product_name: product.name || sku.toUpperCase(),
+    variant_label,
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -87,13 +98,24 @@ exports.addItem = catchAsync(async (req, res) => {
   );
   const newQty = (existing?.quantity || 0) + quantity;
 
-  const { price } = await resolveVariant(product_sku, newQty);
+  const { price, product_name, variant_label } = await resolveVariant(
+    product_sku,
+    newQty
+  );
 
   if (existing) {
     existing.quantity = newQty;
     existing.price = price; // refresh price in case it changed
+    existing.product_name = product_name;
+    existing.variant_label = variant_label;
   } else {
-    cart.items.push({ product_sku: product_sku.toUpperCase(), quantity, price });
+    cart.items.push({
+      product_sku: product_sku.toUpperCase(),
+      product_name,
+      variant_label,
+      quantity,
+      price,
+    });
   }
 
   // If a coupon was already applied, re-validate and recompute discount.
@@ -140,9 +162,11 @@ exports.updateItem = catchAsync(async (req, res) => {
   if (quantity === 0) {
     cart.items.splice(idx, 1);
   } else {
-    const { price } = await resolveVariant(sku, quantity);
+    const { price, product_name, variant_label } = await resolveVariant(sku, quantity);
     cart.items[idx].quantity = quantity;
     cart.items[idx].price = price;
+    cart.items[idx].product_name = product_name;
+    cart.items[idx].variant_label = variant_label;
   }
 
   // Revalidate coupon after quantity change.

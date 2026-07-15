@@ -9,10 +9,11 @@ const cartSchema = new mongoose.Schema(
     user_id: {type:String, required: true},
     items: [
         {
-            product_sku: {type:String, required: true},
-            quantity: {type:Number, required: true},
-            price: {type:Number, required: true}
-
+            product_sku: { type: String, required: true },
+            product_name: { type: String },
+            variant_label: { type: String },
+            quantity: { type: Number, required: true },
+            price: { type: Number, required: true },
         }
     ],
     is_coupon_applied: {type:Boolean},

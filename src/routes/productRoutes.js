@@ -12,7 +12,11 @@ const adminWarehouse = [authenticate, authorize('admin'), warehouseScope];
 
 // ── Public (auth optional — logged-in admins also see draft/archived) ─────────
 router.get('/', optionalAuthenticate, productController.getAllProducts);
+router.get('/new-arrivals', optionalAuthenticate, productController.getNewArrivals);
+router.get('/best-sellers', optionalAuthenticate, productController.getBestSellers);
+router.get('/featured', optionalAuthenticate, productController.getFeatured);
 router.get('/:idOrSlug', optionalAuthenticate, productController.getProduct);
+
 
 // ── Admin only — product CRUD ─────────────────────────────────────────────────
 router.post('/', adminWarehouse, productController.createProduct);

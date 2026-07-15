@@ -45,7 +45,8 @@ const resolveSort = (sort) => {
 exports.getAllProducts = catchAsync(async (req, res) => {
   const {
     page = 1, limit = 24, sort = 'newest',
-    search, category, brand, min_price, max_price, featured, status,
+    search, category, brand, min_price, max_price, min_rating, featured, status,
+    attr_key, attr_value,
   } = req.query;
 
   const isAdmin = req.user && req.user.user_role === 'admin';
@@ -74,6 +75,20 @@ exports.getAllProducts = catchAsync(async (req, res) => {
     filter.min_price = {};
     if (min_price) filter.min_price.$gte = Number(min_price);
     if (max_price) filter.min_price.$lte = Number(max_price);
+  }
+
+  if (min_rating !== undefined && min_rating !== '') {
+    filter.ratings_average = { $gte: Number(min_rating) };
+  }
+
+  // Variant / product attribute filter — e.g. attr_key=Color&attr_value=Red
+  if (attr_key && attr_value) {
+    const key = String(attr_key);
+    const value = String(attr_value);
+    filter.$or = [
+      { [`attributes.${key}`]: value },
+      { variants: { $elemMatch: { [`attributes.${key}`]: value, is_active: true } } },
+    ];
   }
 
   const skip = (Number(page) - 1) * Number(limit);
@@ -260,5 +275,168 @@ exports.updateStock = catchAsync(async (req, res) => {
     success: true,
     message: 'Stock updated successfully',
     data: { stock_quantity: variant.stock_quantity },
+  });
+});
+
+
+
+/**
+ * GET /api/products/new-arrivals
+ * Fetch the latest products based on created_at date
+ * Query params: limit (default 10, max 50)
+ */
+exports.getNewArrivals = catchAsync(async (req, res) => {
+  const { limit = 10 } = req.query;
+  const limitNum = Math.min(parseInt(limit) || 10, 50);
+
+  const filter = { status: 'active' };
+
+  // Apply warehouse filter for admin users
+  if (req.user && req.user.user_role === 'admin' && req.warehouseFilter) {
+    Object.assign(filter, req.warehouseFilter);
+  }
+
+  const products = await Product.find(filter)
+    .sort({ created_at: -1 })
+    .limit(limitNum)
+    .populate('brand', 'name slug logo')
+    .populate('categories', 'name slug')
+    .populate('warehouse_id', 'name warehouse_code city')
+    .select('-__v -variants.cost_price');
+
+  res.status(200).json({
+    success: true,
+    data: { products },
+    meta: { count: products.length, limit: limitNum },
+  });
+});
+
+/**
+ * GET /api/products/best-sellers
+ * Fetch top-selling products based on order history
+ * Query params: limit (default 10, max 50), days (default 30)
+ */
+exports.getBestSellers = catchAsync(async (req, res) => {
+  const { limit = 10, days = 30 } = req.query;
+  const limitNum = Math.min(parseInt(limit) || 10, 50);
+  const daysNum = parseInt(days) || 30;
+
+  // Import Orders model
+  const Orders = require('../models/Order');
+
+  // Calculate date range
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysNum);
+
+  // Build warehouse filter for admin users
+  let warehouseFilter = {};
+  if (req.user && req.user.user_role === 'admin' && req.warehouseFilter) {
+    warehouseFilter = req.warehouseFilter;
+  }
+
+  // Aggregation pipeline to find best-selling products
+  const bestSellers = await Orders.aggregate([
+    // Match delivered orders within date range
+    {
+      $match: {
+        status: 'DELIVERED',
+        created_at: { $gte: startDate },
+        ...warehouseFilter,
+      },
+    },
+    // Unwind cart_details.items to get individual products
+    { $unwind: '$cart_details.items' },
+    // Group by product ID and calculate total quantity sold
+    {
+      $group: {
+        _id: '$cart_details.items.product_id',
+        total_sold: { $sum: '$cart_details.items.quantity' },
+        total_revenue: { $sum: { $multiply: ['$cart_details.items.price', '$cart_details.items.quantity'] } },
+        last_order_date: { $max: '$created_at' },
+        order_count: { $sum: 1 },
+      },
+    },
+    // Sort by total sold descending
+    { $sort: { total_sold: -1 } },
+    // Limit results
+    { $limit: limitNum },
+  ]);
+
+  // Extract product IDs
+  const productIds = bestSellers.map((item) => item._id);
+
+  // Fetch product details
+  const productFilter = {
+    _id: { $in: productIds },
+    status: 'active',
+  };
+
+  // Apply warehouse filter for admin users
+  if (req.user && req.user.user_role === 'admin' && req.warehouseFilter) {
+    Object.assign(productFilter, req.warehouseFilter);
+  }
+
+  const products = await Product.find(productFilter)
+    .populate('brand', 'name slug logo')
+    .populate('categories', 'name slug')
+    .populate('warehouse_id', 'name warehouse_code city')
+    .select('-__v -variants.cost_price');
+
+  // Merge sales data with product details and maintain order
+  const productsWithSales = bestSellers.map((salesData) => {
+    const product = products.find((p) => String(p._id) === String(salesData._id));
+    return {
+      ...product.toObject(),
+      sales_metrics: {
+        total_sold: salesData.total_sold,
+        total_revenue: salesData.total_revenue,
+        order_count: salesData.order_count,
+        last_order_date: salesData.last_order_date,
+      },
+    };
+  });
+
+  res.status(200).json({
+    success: true,
+    data: { products: productsWithSales },
+    meta: {
+      count: productsWithSales.length,
+      limit: limitNum,
+      days_analyzed: daysNum,
+    },
+  });
+});
+
+/**
+ * GET /api/products/featured
+ * Fetch featured products
+ * Query params: limit (default 10, max 50)
+ */
+exports.getFeatured = catchAsync(async (req, res) => {
+  const { limit = 10 } = req.query;
+  const limitNum = Math.min(parseInt(limit) || 10, 50);
+
+  const filter = {
+    status: 'active',
+    is_featured: true,
+  };
+
+  // Apply warehouse filter for admin users
+  if (req.user && req.user.user_role === 'admin' && req.warehouseFilter) {
+    Object.assign(filter, req.warehouseFilter);
+  }
+
+  const products = await Product.find(filter)
+    .sort({ created_at: -1 })
+    .limit(limitNum)
+    .populate('brand', 'name slug logo')
+    .populate('categories', 'name slug')
+    .populate('warehouse_id', 'name warehouse_code city')
+    .select('-__v -variants.cost_price');
+
+  res.status(200).json({
+    success: true,
+    data: { products },
+    meta: { count: products.length, limit: limitNum },
   });
 });

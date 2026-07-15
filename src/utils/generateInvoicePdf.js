@@ -135,14 +135,18 @@ const generateInvoicePdf = (order, platformSettings) => {
          .text('Amount',   COL.amount,       y + 7);
       y += ROW_H;
 
-      // Item rows
+      // Item rows — prefer product_name; fall back to SKU
       const tableItems = items.length > 0
         ? items
-        : [{ product_sku: 'N/A', quantity: 1, price: subtotal }];
+        : [{ product_name: 'N/A', product_sku: 'N/A', quantity: 1, price: subtotal }];
 
       tableItems.forEach((item, i) => {
         const rowY = y + i * ROW_H;
         const amount = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1);
+        const label =
+          (item.product_name && String(item.product_name).trim()) ||
+          item.product_sku ||
+          'Item';
 
         // Subtle alternating row tint
         if (i % 2 === 0) {
@@ -150,7 +154,7 @@ const generateInvoicePdf = (order, platformSettings) => {
         }
 
         doc.fillColor(DARK).fontSize(10).font('Helvetica')
-           .text(item.product_sku || 'Item', COL.item + 6, rowY + 7, { width: COL.qty - COL.item - 12 })
+           .text(label, COL.item + 6, rowY + 7, { width: COL.qty - COL.item - 12 })
            .text(String(item.quantity || 1),         COL.qty,         rowY + 7)
            .text(currency(item.price),               COL.price,        rowY + 7)
            .text(currency(amount),                   COL.amount,       rowY + 7);
