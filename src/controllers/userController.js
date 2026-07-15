@@ -326,6 +326,11 @@ exports.updateUserStatus = catchAsync(async (req, res) => {
   const target = await User.findById(req.params.id);
   if (!target) throw new ApiError(404, 'User not found');
 
+  // Customer support may only lock/unlock end-customer accounts.
+  if (req.user.user_role === 'customer_support' && target.user_role !== 'user') {
+    throw new ApiError(403, 'Customer support can only manage customer accounts');
+  }
+
   // Guard: prevent admins from suspending each other unless super-admin.
   if (
     target.user_role === 'admin' &&
@@ -410,6 +415,11 @@ exports.deleteUser = catchAsync(async (req, res) => {
 exports.unlockUser = catchAsync(async (req, res) => {
   const target = await User.findById(req.params.id);
   if (!target) throw new ApiError(404, 'User not found');
+
+  // Customer support may only unlock end-customer accounts.
+  if (req.user.user_role === 'customer_support' && target.user_role !== 'user') {
+    throw new ApiError(403, 'Customer support can only manage customer accounts');
+  }
 
   target.is_account_locked    = false;
   target.login_attempts       = 0;

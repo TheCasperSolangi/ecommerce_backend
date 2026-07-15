@@ -39,10 +39,13 @@ const assertEligibility = (coupon, user, userCreatedAt) => {
   if (coupon.expires_at && coupon.expires_at < now) {
     throw new ApiError(400, 'This coupon has expired');
   }
-  if (!coupon.is_active) {
+  if (coupon.is_active === false) {
     throw new ApiError(400, 'This coupon is no longer active');
   }
-  if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
+  if (
+    coupon.usage_limit != null &&
+    Number(coupon.usage_count || 0) >= Number(coupon.usage_limit)
+  ) {
     throw new ApiError(400, 'This coupon has reached its usage limit');
   }
 

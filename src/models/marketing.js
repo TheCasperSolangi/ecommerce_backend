@@ -7,7 +7,7 @@ const marketingMessage = new mongoose.Schema(
   {
         message_code: {type:String, required: true},
         text: {type:String, required: true},
-        image: {type:String, required: true},
+        image: { type: String, default: null },
         channels: [String], // enums: ['Whatsapp', 'Email', 'Push Notifications'],
         analytics: {
             delivered: {type:Number},

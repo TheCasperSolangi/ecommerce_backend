@@ -8,20 +8,7 @@ const router = express.Router();
 // All ticket routes require authentication.
 router.use(authenticate);
 
-// ── Customer routes ───────────────────────────────────────────────────────────
-// Create a ticket — status is always forced to OPEN server-side.
-router.post('/', ticketController.createTicket);
-
-// View own tickets.
-router.get('/', ticketController.getMyTickets);
-router.get('/:id', ticketController.getTicket);
-
-// Edit own ticket — only description/attachments, only while OPEN.
-router.patch('/:id', ticketController.updateTicket);
-
-// ── Staff routes (admin + customer_support) ───────────────────────────────────
-// Separate /staff prefix keeps the permission boundary explicit.
-// authorize ensures customers cannot reach these even if they guess the URL.
+// ── Staff routes BEFORE /:id so "staff" is not captured as a ticket id ────────
 router.get(
   '/staff/all',
   authorize('admin', 'customer_support'),
@@ -34,18 +21,22 @@ router.get(
   ticketController.staffGetTicket
 );
 
-// Status transitions (OPEN → UNDER_REVIEW → CLOSED) and team notes.
 router.patch(
   '/staff/:id',
   authorize('admin', 'customer_support'),
   ticketController.staffUpdateTicket
 );
 
-// Hard delete — admin only.
 router.delete(
   '/staff/:id',
   authorize('admin'),
   ticketController.staffDeleteTicket
 );
+
+// ── Customer routes ───────────────────────────────────────────────────────────
+router.post('/', ticketController.createTicket);
+router.get('/', ticketController.getMyTickets);
+router.get('/:id', ticketController.getTicket);
+router.patch('/:id', ticketController.updateTicket);
 
 module.exports = router;

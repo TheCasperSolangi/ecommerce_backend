@@ -14,6 +14,17 @@ router.get('/track/:orderCode', orderController.trackOrder);
 // ── All routes below this line require authentication ─────────────────────────
 router.use(authenticate);
 
+// ── Admin routes MUST be registered before /:id so "admin" is not treated as an id ─
+const adminWarehouse = [authorize('admin'), warehouseScope];
+
+router.get('/admin/orders', adminWarehouse, orderController.adminGetAllOrders);
+router.get('/admin/orders/:id', adminWarehouse, orderController.adminGetOrder);
+router.patch('/admin/orders/:id/status', adminWarehouse, orderController.adminUpdateOrderStatus);
+router.patch('/admin/orders/:id/assign-rider', adminWarehouse, orderController.adminAssignRider);
+router.post('/admin/orders/:id/refund', adminWarehouse, orderController.adminRefund);
+router.get('/admin/list',   adminWarehouse, orderController.getOrdersList);
+router.get('/admin/report', adminWarehouse, orderController.getOrdersReport);
+
 // ── Customer routes ───────────────────────────────────────────────────────────
 router.post('/', orderController.placeOrder);
 router.get('/', orderController.getMyOrders);
@@ -22,18 +33,5 @@ router.post('/:id/cancel', orderController.cancelOrder);
 
 // ── Rider routes ──────────────────────────────────────────────────────────────
 router.patch('/:id/rider-update', authorize('rider'), orderController.riderUpdateOrder);
-
-// ── Admin routes — all scoped to the admin's warehouse ───────────────────────
-const adminWarehouse = [authorize('admin'), warehouseScope];
-
-router.get('/admin/orders', adminWarehouse, orderController.adminGetAllOrders);
-router.get('/admin/orders/:id', adminWarehouse, orderController.adminGetOrder);
-router.patch('/admin/orders/:id/status', adminWarehouse, orderController.adminUpdateOrderStatus);
-router.patch('/admin/orders/:id/assign-rider', adminWarehouse, orderController.adminAssignRider);
-router.post('/admin/orders/:id/refund', adminWarehouse, orderController.adminRefund);
-
-// ── Admin — list + report (date range, warehouse override for super-admins) ───
-router.get('/admin/list',   adminWarehouse, orderController.getOrdersList);
-router.get('/admin/report', adminWarehouse, orderController.getOrdersReport);
 
 module.exports = router;

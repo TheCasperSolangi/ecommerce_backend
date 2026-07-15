@@ -26,6 +26,7 @@ const bannerRoutes = require('./routes/bannerRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 const qnaRoutes    = require('./routes/qnaRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const vendorRoutes = require('./routes/vendorRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const ApiError = require('./utils/ApiError');
 
@@ -70,6 +71,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/qna', qnaRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 app.all('*', (req, res, next) => {
   next(new ApiError(404, `Route ${req.originalUrl} not found`));

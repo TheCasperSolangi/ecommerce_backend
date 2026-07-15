@@ -8,8 +8,8 @@ const router = express.Router();
 // ── Authenticated users — validate a coupon before checkout ──────────────────
 router.post('/validate', authenticate, couponController.validateCoupon);
 
-// ── Admin only — CRUD ─────────────────────────────────────────────────────────
-router.use(authenticate, authorize('admin'));
+// ── Admin + marketing — CRUD ──────────────────────────────────────────────────
+router.use(authenticate, authorize('admin', 'marketing'));
 
 router.get('/', couponController.getAllCoupons);
 router.get('/:id', couponController.getCoupon);
