@@ -2,6 +2,8 @@
 
 **OpenCommerce** is a powerful, open source eCommerce backend platform built with **Node.js**, **Express**, and **MongoDB**. Designed for developers who want full control over their store infrastructure — from product catalogs and multi-vendor support to payments, shipping, and customer support ticketing.
 
+frontend_repo: https://github.com/TheCasperSolangi/ecommerce_frontend
+admin_panel_repo: Under Development
 ---
 
 ## ✨ Features
